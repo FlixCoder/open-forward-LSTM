@@ -156,7 +156,7 @@ impl LSTM
     }
     
     /// Runs an LSTM iteration
-    pub fn run(&mut self, input:&Vec<f64>) -> Vec<f64>
+    pub fn run(&mut self, input:&[f64]) -> Vec<f64>
     {
         if input.len() != self.num_inputs
         {
@@ -164,7 +164,7 @@ impl LSTM
         }
         
         //create vectors for NN input: one using the old memory, one using the updated
-        let mut old_vec = input.clone();
+        let mut old_vec = input.to_vec();
         old_vec.extend_from_slice(&self.cur_out);
         let mut new_vec = old_vec.clone();
         old_vec.extend_from_slice(&self.cur_mem);
