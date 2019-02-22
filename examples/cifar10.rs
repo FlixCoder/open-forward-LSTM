@@ -38,18 +38,21 @@ fn main()
     
     //training: track the optimizer's results
     for i in 0..10
-    {
+    { //10 times
+        //optimize for n steps
         let n = 10;
-        let res = opt.optimize_par(n); //optimize for n steps
-        println!("After {} iteratios:", (i+1) * n);
-        println!("Score: {}", res.0);
-        println!("Gradnorm: {}", res.1);
-        println!("");
+        let res = opt.optimize_par(n);
         
         //save results
         model.set_params(opt.get_params());
         model.reset();
         model.save("cifar10.lstm").ok();
+        
+        //display progress
+        println!("After {} iteratios:", (i+1) * n);
+        println!("Score: {}", res.0);
+        println!("Gradnorm: {}", res.1);
+        println!("");
     }
     
     //display and save results
