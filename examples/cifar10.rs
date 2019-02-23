@@ -34,13 +34,13 @@ fn main()
     let mut opt = ES::new_with_adam(eval, 0.001, 0.0); //learning rate, weight decay
     opt.set_params(model.get_params())
         .set_std(0.02)
-        .set_samples(50);
+        .set_samples(250);
     
     //training: track the optimizer's results
     for i in 0..10
     { //10 times
         //optimize for n steps
-        let n = 10;
+        let n = 100;
         let res = opt.optimize_par(n);
         
         //save results
