@@ -6,7 +6,7 @@ extern crate rand;
 use oflstm::*;
 use esopt::*;
 use ofnn::losses;
-use rand::Rng;
+use rand::prelude::*;
 
 
 fn main()
@@ -47,7 +47,7 @@ fn main()
     model.reset();
     model.save("test.nn").ok();
     
-    let mut rng = rand::thread_rng();
+    let mut rng = thread_rng();
     let mut target = Vec::new();
     let mut pred = Vec::new();
     
@@ -93,7 +93,7 @@ impl Evaluator for LSTMEvaluator
         local.set_params(params);
         local.reset();
         
-        let mut rng = rand::thread_rng();
+        let mut rng = thread_rng();
         let mut target = Vec::new();
         let mut pred = Vec::new();
         

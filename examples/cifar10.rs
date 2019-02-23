@@ -6,7 +6,7 @@ extern crate rand;
 use oflstm::*;
 use esopt::*;
 use ofnn::losses;
-use rand::Rng;
+use rand::prelude::*;
 use std::io::prelude::*;
 use std::fs::File;
 
@@ -40,7 +40,7 @@ fn main()
     for i in 0..10
     { //10 times
         //optimize for n steps
-        let n = 100;
+        let n = 10;
         let res = opt.optimize_par(n);
         
         //save results
@@ -115,7 +115,7 @@ impl Evaluator for CIFAR10Evaluator
         let mut local = self.model.clone();
         local.set_params(params);
         
-        let mut rng = rand::thread_rng();
+        let mut rng = thread_rng();
         let start = rng.gen::<usize>() % (self.data.0.len() - BATCHSIZE);
         let end = start + BATCHSIZE;
         
