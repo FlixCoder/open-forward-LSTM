@@ -41,7 +41,7 @@ fn main()
     { //10 times
         //optimize for n steps
         let n = 10;
-        let res = opt.optimize_par(n);
+        let res = opt.optimize_par(n); //try ranked?
         
         //save results
         model.set_params(opt.get_params());
