@@ -9,9 +9,15 @@ use ofnn::losses;
 use rand::prelude::*;
 use std::io::prelude::*;
 use std::fs::File;
+use std::time::Instant;
 
 const BATCHSIZE:usize = 64; //number of items to form a batch inside evaluation
 const STEPS:usize = 1; //number of LSTM runs/steps to decide the class
+
+const LR:f64 = 0.01; //learning rate for the optimizer
+const LAMBDA:f64 = 0.0; //weight decay factor
+const NOISE_STD:f64 = 0.02; //standard deviation of noise to mutate parameters and generate meta population
+const POPULATION:usize = 250; //number of double-sided samples forming the meta population
 
 
 fn main()
@@ -31,13 +37,14 @@ fn main()
     let eval = CIFAR10Evaluator::new("cifar-10-binary/data_batch_1.bin", model.clone());
     
     //evolutionary optimizer (for more details about it, see the git repository of it)
-    let mut opt = ES::new_with_adam(eval, 0.001, 0.0); //learning rate, weight decay
+    let mut opt = ES::new_with_adam(eval, LR, LAMBDA); //learning rate, weight decay
     opt.set_params(model.get_params())
-        .set_std(0.02)
-        .set_samples(250);
+        .set_std(NOISE_STD)
+        .set_samples(POPULATION);
     
     //training: track the optimizer's results
     println!("Beginning training..");
+    let time = Instant::now();
     for i in 0..10
     { //10 times
         //optimize for n steps
@@ -55,6 +62,10 @@ fn main()
         println!("Gradnorm: {}", res.1);
         println!("");
     }
+    let elapsed = time.elapsed();
+    let sec = (elapsed.as_secs() as f64) + (elapsed.subsec_nanos() as f64 / 1000_000_000.0);
+    println!("Time: {} min {:.3} s", (sec / 60.0).floor(), sec % 60.0);
+    println!("");
     
     //save trained model and estimate and display results
     model.set_params(opt.get_params());
@@ -62,8 +73,12 @@ fn main()
     model.save("cifar10.lstm").ok();
     
     println!("Final results on test data:");
+    let time = Instant::now();
     let mut eval = CIFAR10Evaluator::new("cifar-10-binary/test_batch.bin", model.clone());
     eval.print_metrics();
+    let elapsed = time.elapsed();
+    let sec = (elapsed.as_secs() as f64) + (elapsed.subsec_nanos() as f64 / 1000_000_000.0);
+    println!("Time: {} min {:.3} s", (sec / 60.0).floor(), sec % 60.0);
     
     //clean up
     //std::fs::remove_file("cifar10.lstm").ok();
