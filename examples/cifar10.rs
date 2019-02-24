@@ -37,11 +37,12 @@ fn main()
         .set_samples(250);
     
     //training: track the optimizer's results
+    println!("Beginning training..");
     for i in 0..10
     { //10 times
         //optimize for n steps
         let n = 10;
-        let res = opt.optimize_par(n); //try ranked?
+        let res = opt.optimize_ranked_par(n); //use ranked or not?
         
         //save results
         model.set_params(opt.get_params());
@@ -55,10 +56,14 @@ fn main()
         println!("");
     }
     
-    //display and save results
+    //save trained model and estimate and display results
     model.set_params(opt.get_params());
     model.reset();
     model.save("cifar10.lstm").ok();
+    
+    println!("Final results on test data:");
+    let mut eval = CIFAR10Evaluator::new("cifar-10-binary/test_batch.bin", model.clone());
+    eval.print_metrics();
     
     //clean up
     //std::fs::remove_file("cifar10.lstm").ok();
@@ -90,12 +95,28 @@ fn to_categorical(classes:u8, label:u8) -> Vec<f64>
     vec
 }
 
+fn argmax(vec:&[f64]) -> usize
+{
+    let mut argmax = 0;
+    let mut max = std::f64::MIN;
+    for (i, val) in vec.iter().enumerate()
+    {
+        if *val >= max
+        {
+            max = *val;
+            argmax = i;
+        }
+    }
+    argmax
+}
+
 
 #[derive(Clone)]
 struct CIFAR10Evaluator
 {
     model:LSTM,
     data:(Vec<Vec<f64>>, Vec<Vec<f64>>),
+    seed:u64,
 }
 
 impl CIFAR10Evaluator
@@ -103,20 +124,54 @@ impl CIFAR10Evaluator
     pub fn new(filename:&str, model:LSTM) -> CIFAR10Evaluator
     {
         let data = load_cifar10(filename).unwrap();
-        CIFAR10Evaluator { model: model, data: data }
+        let seed = thread_rng().next_u64() % (std::u64::MAX - 10000); //prevent overflow when adding the index
+        CIFAR10Evaluator { model: model, data: data, seed: seed }
+    }
+    
+    pub fn print_metrics(&mut self)
+    {
+        //compute predicitions for whole data
+        let mut pred = Vec::new();
+        for x in &self.data.0
+        {
+            self.model.reset();
+            for _ in 0..STEPS-1
+            {
+                self.model.run(x);
+            }
+            pred.push(self.model.run(x)); //last step results are saved as prediction
+        }
+        
+        //calculate metrics
+        let loss = losses::categorical_crossentropy(&pred, &self.data.1);
+        let mut acc = 0.0;
+        for (p, t) in pred.iter().zip(self.data.1.iter())
+        {
+            let select = argmax(p);
+            if t[select] == 1.0
+            {
+                acc += 1.0;
+            }
+        }
+        acc *= 100.0 / pred.len() as f64;
+        
+        //display results
+        println!("Loss: {}", loss);
+        println!("Accuracy: {:6.3}%", acc);
     }
 }
 
 impl Evaluator for CIFAR10Evaluator
 {
     //make the model repeat numbers from two iterations ago
-    fn eval(&self, params:&[f64]) -> f64
+    fn eval_train(&self, params:&[f64], index:usize) -> f64
     {
         let mut local = self.model.clone();
         local.set_params(params);
         
-        let mut rng = thread_rng();
-        let start = rng.gen::<usize>() % (self.data.0.len() - BATCHSIZE);
+        //every parameter pertubation uses the same training data, but every iteration uses different
+        let mut rng = SmallRng::seed_from_u64(self.seed + index as u64);
+        let start = rng.gen::<usize>() % (self.data.0.len() - BATCHSIZE); //not really uniform, but suffices
         let end = start + BATCHSIZE;
         
         let mut pred = Vec::new();
@@ -131,5 +186,10 @@ impl Evaluator for CIFAR10Evaluator
         }
         
         -losses::categorical_crossentropy(&pred, &self.data.1[start..end])
+    }
+    
+    fn eval_test(&self, params:&[f64]) -> f64
+    {
+        self.eval_train(params, 9999) //use index greater than can be used during training to possibly yield seperate test data (constant)
     }
 }

@@ -74,26 +74,29 @@ fn main()
 struct LSTMEvaluator
 {
     model:LSTM,
+    seed:u64,
 }
 
 impl LSTMEvaluator
 {
     pub fn new(model:LSTM) -> LSTMEvaluator
     {
-        LSTMEvaluator { model: model }
+        let seed = thread_rng().next_u64() % (std::u64::MAX - 1000); //prevent overflow when adding the index
+        LSTMEvaluator { model: model, seed: seed }
     }
 }
 
 impl Evaluator for LSTMEvaluator
 {
     //make the model repeat numbers from two iterations ago
-    fn eval(&self, params:&[f64]) -> f64
+    fn eval_train(&self, params:&[f64], index:usize) -> f64
     {
         let mut local = self.model.clone();
         local.set_params(params);
         local.reset();
         
-        let mut rng = thread_rng();
+        //every parameter pertubation uses the same training data, but every iteration uses different
+        let mut rng = SmallRng::seed_from_u64(self.seed + index as u64);
         let mut target = Vec::new();
         let mut pred = Vec::new();
         
@@ -107,5 +110,10 @@ impl Evaluator for LSTMEvaluator
         }
         
         -losses::mae(&pred, &target)
+    }
+    
+    fn eval_test(&self, params:&[f64]) -> f64
+    {
+        self.eval_train(params, 999) //use index greater than can be used during training to yield seperate test data (constant)
     }
 }
