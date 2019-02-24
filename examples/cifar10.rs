@@ -14,8 +14,8 @@ use std::time::Instant;
 const BATCHSIZE:usize = 64; //number of items to form a batch inside evaluation
 const STEPS:usize = 1; //number of LSTM runs/steps to decide the class
 
-const LR:f64 = 0.01; //learning rate for the optimizer
-const LAMBDA:f64 = 0.0; //weight decay factor
+const LR:f64 = 0.001; //learning rate for the optimizer
+const LAMBDA:f64 = 0.001; //weight decay factor
 const NOISE_STD:f64 = 0.02; //standard deviation of noise to mutate parameters and generate meta population
 const POPULATION:usize = 250; //number of double-sided samples forming the meta population
 
