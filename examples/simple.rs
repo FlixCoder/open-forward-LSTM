@@ -5,6 +5,7 @@ extern crate rand;
 
 use oflstm::*;
 use esopt::*;
+use oflstm::Float;
 use ofnn::losses;
 use rand::prelude::*;
 
@@ -54,7 +55,7 @@ fn main()
     let n = 7;
     for i in 0..n
     {
-        let input = vec![rng.gen::<f64>()];
+        let input = vec![rng.gen::<Float>()];
         let out = model.run(&input);
         if i < n-2 { target.push(input); }
         if i >= 2 { pred.push(out); }
@@ -89,7 +90,7 @@ impl LSTMEvaluator
 impl Evaluator for LSTMEvaluator
 {
     //make the model repeat numbers from two iterations ago
-    fn eval_train(&self, params:&[f64], index:usize) -> f64
+    fn eval_train(&self, params:&[Float], index:usize) -> Float
     {
         let mut local = self.model.clone();
         local.set_params(params);
@@ -103,7 +104,7 @@ impl Evaluator for LSTMEvaluator
         let n = 52;
         for i in 0..n
         {
-            let input = vec![rng.gen::<f64>()];
+            let input = vec![rng.gen::<Float>()];
             let out = local.run(&input);
             if i < n-2 { target.push(input); }
             if i >= 2 { pred.push(out); }
@@ -112,7 +113,7 @@ impl Evaluator for LSTMEvaluator
         -losses::mae(&pred, &target)
     }
     
-    fn eval_test(&self, params:&[f64]) -> f64
+    fn eval_test(&self, params:&[Float]) -> Float
     {
         self.eval_train(params, 999) //use index greater than can be used during training to yield seperate test data (constant)
     }

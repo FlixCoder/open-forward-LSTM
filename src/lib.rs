@@ -12,6 +12,10 @@ use std::io::prelude::*;
 use std::fs::File;
 use ofnn::*;
 
+pub type Float = f32;
+#[cfg(feature = "floats-f64")]
+pub type Float = f64;
+
 
 /// Activations possible to use for the output
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
@@ -32,8 +36,8 @@ pub struct LSTM
     nn_gate:Sequential, //NN to gate forgetting and, after inversion, information gain
     nn_extract:Sequential, //NN to process input, memory and previous output into new information
     nn_output:Sequential, //NN to process input, memory and previous output into new output
-    cur_mem: Vec<f64>, //current memory vector
-    cur_out: Vec<f64>, //current output vector
+    cur_mem: Vec<Float>, //current memory vector
+    cur_out: Vec<Float>, //current output vector
     num_inputs: usize, //input dimension
     num_mem: usize, //memory dimension
     num_outputs: usize, //output dimension
@@ -78,11 +82,15 @@ impl LSTM
         };
         
         //create neural nets
-        gate.add_layer_dense(mem, Initializer::Glorot)
+        gate.add_layer_dropout(0.0)
+            .add_layer_dense(mem, Initializer::Glorot)
             .add_layer(Layer::Sigmoid);
-        extract.add_layer_dense(mem, Initializer::Glorot)
-            .add_layer(Layer::Tanh);
-        output.add_layer_dense(outputs, out_init)
+        extract.add_layer_dropout(0.0)
+            .add_layer_dense(mem, Initializer::Glorot)
+            .add_layer(Layer::Tanh)
+            .add_layer_dropout(0.0);
+        output.add_layer_dropout(0.0)
+            .add_layer_dense(outputs, out_init)
             .add_layer(out_act);
         
         //create and return object
@@ -98,32 +106,32 @@ impl LSTM
     }
     
     /// Get the current memory
-    pub fn get_mem(&self) -> &Vec<f64>
+    pub fn get_mem(&self) -> &Vec<Float>
     {
         &self.cur_mem
     }
     
     /// Get the current memory (as mut). Possible to initialize the memory as needed
-    pub fn get_mem_mut(&mut self) -> &mut Vec<f64>
+    pub fn get_mem_mut(&mut self) -> &mut Vec<Float>
     {
         &mut self.cur_mem
     }
     
     /// Get the current previous output
-    pub fn get_out(&self) -> &Vec<f64>
+    pub fn get_out(&self) -> &Vec<Float>
     {
         &self.cur_out
     }
     
     /// Get the current previous output (as mut). Possible to initialize the previous output as needed
-    pub fn get_out_mut(&mut self) -> &mut Vec<f64>
+    pub fn get_out_mut(&mut self) -> &mut Vec<Float>
     {
         &mut self.cur_out
     }
     
     /// Return the flat parameters of the LSTM.
     /// Used for evolution-strategies
-    pub fn get_params(&self) -> Vec<f64>
+    pub fn get_params(&self) -> Vec<Float>
     {
         let mut params = self.nn_gate.get_params();
         params.append(&mut self.nn_extract.get_params());
@@ -134,7 +142,7 @@ impl LSTM
     /// Set the LSTM's parameters by a flat input.
     /// Used for evolution-strategies.
     /// Panics if params' size does not fit the LSTM
-    pub fn set_params(&mut self, params:&[f64]) -> &mut Self
+    pub fn set_params(&mut self, params:&[Float]) -> &mut Self
     {
         //calculate the number of parameters for every NN
         let insize = self.num_inputs + self.num_mem + self.num_outputs;
@@ -148,6 +156,34 @@ impl LSTM
         self
     }
     
+    /// Set the dropout value for input layers
+    pub fn set_input_dropout(&mut self, d:Float) -> &mut Self
+    {
+        if d < 0.0 || d >= 1.0
+        {
+            panic!("Inappropriate dropout parameter!");
+        }
+        
+        self.nn_gate.get_layers_mut()[0] = Layer::Dropout(d);
+        self.nn_extract.get_layers_mut()[0] = Layer::Dropout(d);
+        self.nn_output.get_layers_mut()[0] = Layer::Dropout(d);
+        
+        self
+    }
+    
+    /// Set the dropout value for extraction NN's output layer
+    pub fn set_extract_dropout(&mut self, d:Float) -> &mut Self
+    {
+        if d < 0.0 || d >= 1.0
+        {
+            panic!("Inappropriate dropout parameter!");
+        }
+        
+        self.nn_extract.get_layers_mut()[3] = Layer::Dropout(d);
+        
+        self
+    }
+    
     /// Reset current memory and output
     pub fn reset(&mut self)
     {
@@ -156,7 +192,7 @@ impl LSTM
     }
     
     /// Runs an LSTM iteration
-    pub fn run(&mut self, input:&[f64]) -> Vec<f64>
+    pub fn run(&mut self, input:&[Float]) -> Vec<Float>
     {
         if input.len() != self.num_inputs
         {
@@ -216,7 +252,7 @@ impl LSTM
 
 
 /// Elementwise vector multiplication
-fn elem_multiply(a:&mut[f64], b:&[f64])
+fn elem_multiply(a:&mut[Float], b:&[Float])
 {
     for (x, y) in a.iter_mut().zip(b.iter())
     {
@@ -225,13 +261,13 @@ fn elem_multiply(a:&mut[f64], b:&[f64])
 }
 
 /// Elementwise vector "inversion"
-fn elem_invert(vec:&mut[f64])
+fn elem_invert(vec:&mut[Float])
 {
     vec.iter_mut().for_each(|val| *val = 1.0 - *val);
 }
 
 /// Elementwise vector addition
-fn elem_add(a:&mut[f64], b:&[f64])
+fn elem_add(a:&mut[Float], b:&[Float])
 {
     for (x, y) in a.iter_mut().zip(b.iter())
     {

@@ -1,6 +1,6 @@
 [package]
 name = "oflstm"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["FlixCoder"]
 edition = "2018"
 
@@ -12,6 +12,9 @@ serde_json = "1.*"
 #rayon = "0.9.*"
 esopt = { git = "https://github.com/FlixCoder/rust-es-optimizer.git" }
 ofnn = { git = "https://github.com/FlixCoder/open-forward-NN.git" }
+
+[features]
+floats-f64 = []
 
 
 [profile.dev]

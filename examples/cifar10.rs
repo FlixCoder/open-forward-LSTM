@@ -5,6 +5,7 @@ extern crate rand;
 
 use oflstm::*;
 use esopt::*;
+use oflstm::Float;
 use ofnn::losses;
 use rand::prelude::*;
 use std::io::prelude::*;
@@ -14,9 +15,10 @@ use std::time::Instant;
 const BATCHSIZE:usize = 64; //number of items to form a batch inside evaluation
 const STEPS:usize = 1; //number of LSTM runs/steps to decide the class
 
-const LR:f64 = 0.005; //learning rate for the optimizer
-const LAMBDA:f64 = 0.0001; //weight decay factor
-const NOISE_STD:f64 = 0.05; //standard deviation of noise to mutate parameters and generate meta population
+const LR:Float = 0.0025; //learning rate for the optimizer
+const LAMBDA:Float = 0.001; //weight decay factor
+const DROPOUT:Float = 0.5; //dropout factor (percentage to be dropped)
+const NOISE_STD:Float = 0.025; //standard deviation of noise to mutate parameters and generate meta population
 const POPULATION:usize = 250; //number of double-sided samples forming the meta population
 
 
@@ -32,6 +34,9 @@ fn main()
         { //else construct it
             LSTM::new_ex(3072, 384, 10, Activation::SoftMax)
         };
+    //activate dropout for training
+    model.set_input_dropout(DROPOUT)
+        .set_extract_dropout(DROPOUT);
     
     //create the evaluator
     let eval = CIFAR10Evaluator::new("cifar-10-binary/data_batch_1.bin", model.clone());
@@ -86,7 +91,7 @@ fn main()
 }
 
 
-fn load_cifar10(filename:&str) -> std::io::Result<(Vec<Vec<f64>>, Vec<Vec<f64>>)>
+fn load_cifar10(filename:&str) -> std::io::Result<(Vec<Vec<Float>>, Vec<Vec<Float>>)>
 {
     let mut file = File::open(filename)?;
     let mut x = Vec::new();
@@ -97,24 +102,24 @@ fn load_cifar10(filename:&str) -> std::io::Result<(Vec<Vec<f64>>, Vec<Vec<f64>>)
     {
         file.read_exact(&mut buffer)?;
         y.push(to_categorical(10, buffer[0]));
-        let data:Vec<f64> = buffer[1..].iter().map(|val| *val as f64 / 128.0 - 1.0).collect();
+        let data:Vec<Float> = buffer[1..].iter().map(|val| *val as Float / 128.0 - 1.0).collect();
         x.push(data);
     }
     
     Ok((x, y))
 }
 
-fn to_categorical(classes:u8, label:u8) -> Vec<f64>
+fn to_categorical(classes:u8, label:u8) -> Vec<Float>
 {
     let mut vec = vec![0.0; classes as usize];
     vec[label as usize] = 1.0;
     vec
 }
 
-fn argmax(vec:&[f64]) -> usize
+fn argmax(vec:&[Float]) -> usize
 {
     let mut argmax = 0;
-    let mut max = std::f64::MIN;
+    let mut max = std::f64::NEG_INFINITY as Float;
     for (i, val) in vec.iter().enumerate()
     {
         if *val >= max
@@ -131,7 +136,7 @@ fn argmax(vec:&[f64]) -> usize
 struct CIFAR10Evaluator
 {
     model:LSTM,
-    data:(Vec<Vec<f64>>, Vec<Vec<f64>>),
+    data:(Vec<Vec<Float>>, Vec<Vec<Float>>),
     seed:u64,
 }
 
@@ -151,6 +156,10 @@ impl CIFAR10Evaluator
     
     pub fn print_metrics(&mut self)
     {
+        //disable dropout for testing
+        self.model.set_input_dropout(0.0)
+            .set_extract_dropout(0.0);
+        
         //compute predicitions for whole data
         let mut pred = Vec::new();
         for x in &self.data.0
@@ -174,18 +183,22 @@ impl CIFAR10Evaluator
                 acc += 1.0;
             }
         }
-        acc *= 100.0 / pred.len() as f64;
+        acc *= 100.0 / pred.len() as Float;
         
         //display results
         println!("Loss: {}", loss);
         println!("Accuracy: {:6.3}%", acc);
+        
+        //reenable dropout after testing
+        self.model.set_input_dropout(DROPOUT)
+            .set_extract_dropout(DROPOUT);
     }
 }
 
 impl Evaluator for CIFAR10Evaluator
 {
     //make the model repeat numbers from two iterations ago
-    fn eval_train(&self, params:&[f64], index:usize) -> f64
+    fn eval_train(&self, params:&[Float], index:usize) -> Float
     {
         let mut local = self.model.clone();
         local.set_params(params);
@@ -209,7 +222,7 @@ impl Evaluator for CIFAR10Evaluator
         -losses::categorical_crossentropy(&pred, &self.data.1[start..end])
     }
     
-    fn eval_test(&self, params:&[f64]) -> f64
+    fn eval_test(&self, params:&[Float]) -> Float
     {
         self.eval_train(params, 9999) //use index greater than can be used during training to possibly yield seperate test data (constant)
     }
