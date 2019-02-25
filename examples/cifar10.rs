@@ -14,9 +14,9 @@ use std::time::Instant;
 const BATCHSIZE:usize = 64; //number of items to form a batch inside evaluation
 const STEPS:usize = 1; //number of LSTM runs/steps to decide the class
 
-const LR:f64 = 0.001; //learning rate for the optimizer
-const LAMBDA:f64 = 0.001; //weight decay factor
-const NOISE_STD:f64 = 0.02; //standard deviation of noise to mutate parameters and generate meta population
+const LR:f64 = 0.005; //learning rate for the optimizer
+const LAMBDA:f64 = 0.0001; //weight decay factor
+const NOISE_STD:f64 = 0.05; //standard deviation of noise to mutate parameters and generate meta population
 const POPULATION:usize = 250; //number of double-sided samples forming the meta population
 
 
@@ -42,6 +42,11 @@ fn main()
         .set_std(NOISE_STD)
         .set_samples(POPULATION);
     
+    //show initial scores
+    println!("Initial results on test set:");
+    let mut tester = CIFAR10Evaluator::new("cifar-10-binary/test_batch.bin", model.clone());
+    tester.print_metrics();
+    
     //training: track the optimizer's results
     println!("Beginning training..");
     let time = Instant::now();
@@ -49,7 +54,7 @@ fn main()
     { //10 times
         //optimize for n steps
         let n = 10;
-        let res = opt.optimize_ranked_par(n); //use ranked or not?
+        let res = opt.optimize_std_par(n); //use ranked or not?
         
         //save results
         model.set_params(opt.get_params());
@@ -73,12 +78,8 @@ fn main()
     model.save("cifar10.lstm").ok();
     
     println!("Final results on test data:");
-    let time = Instant::now();
-    let mut eval = CIFAR10Evaluator::new("cifar-10-binary/test_batch.bin", model.clone());
-    eval.print_metrics();
-    let elapsed = time.elapsed();
-    let sec = (elapsed.as_secs() as f64) + (elapsed.subsec_nanos() as f64 / 1000_000_000.0);
-    println!("Time: {} min {:.3} s", (sec / 60.0).floor(), sec % 60.0);
+    tester.set_model(model.clone());
+    tester.print_metrics();
     
     //clean up
     //std::fs::remove_file("cifar10.lstm").ok();
@@ -141,6 +142,11 @@ impl CIFAR10Evaluator
         let data = load_cifar10(filename).unwrap();
         let seed = thread_rng().next_u64() % (std::u64::MAX - 10000); //prevent overflow when adding the index
         CIFAR10Evaluator { model: model, data: data, seed: seed }
+    }
+    
+    pub fn set_model(&mut self, model:LSTM)
+    {
+        self.model = model;
     }
     
     pub fn print_metrics(&mut self)

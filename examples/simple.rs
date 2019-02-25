@@ -26,16 +26,16 @@ fn main()
     let eval = LSTMEvaluator::new(model.clone());
     
     //evolutionary optimizer (for more details about it, see the git repository of it)
-    let mut opt = ES::new_with_adam(eval, 0.025, 0.0); //learning rate, weight decay
+    let mut opt = ES::new_with_adam(eval, 0.1, 0.0); //learning rate, weight decay
     opt.set_params(model.get_params())
-        .set_std(0.025)
+        .set_std(0.02)
         .set_samples(50);
     
     //training: track the optimizer's results
     for i in 0..5
     {
-        let n = 200;
-        let res = opt.optimize_par(n); //optimize for n steps
+        let n = 20;
+        let res = opt.optimize_std_par(n); //optimize for n steps
         println!("After {} iteratios:", (i+1) * n);
         println!("Score: {}", res.0);
         println!("Gradnorm: {}", res.1);
