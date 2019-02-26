@@ -15,10 +15,11 @@ use std::time::Instant;
 const BATCHSIZE:usize = 32; //number of items to form a batch inside evaluation
 const STEPS:usize = 1; //number of LSTM runs/steps to decide the class
 
-const LR:Float = 0.0025; //learning rate for the optimizer
-const LAMBDA:Float = 0.001; //weight decay factor
-const DROPOUT:Float = 0.4; //dropout factor (percentage to be dropped)
-const NOISE_STD:Float = 0.025; //standard deviation of noise to mutate parameters and generate meta population
+const LR:Float = 0.001; //learning rate for the optimizer
+const LAMBDA:Float = 0.0; //weight decay factor
+const DROPOUT_IN:Float = 0.1; //dropout for input layers factor (percentage to be dropped)
+const DROPOUT_OUT:Float = 0.25; //dropout factor (percentage to be dropped)
+const NOISE_STD:Float = 0.02; //standard deviation of noise to mutate parameters and generate meta population
 const POPULATION:usize = 250; //number of double-sided samples forming the meta population
 
 
@@ -35,8 +36,8 @@ fn main()
             LSTM::new_ex(3072, 384, 10, Activation::SoftMax)
         };
     //activate dropout for training
-    model.set_input_dropout(DROPOUT)
-        .set_extract_dropout(DROPOUT);
+    model.set_input_dropout(DROPOUT_IN)
+        .set_extract_dropout(DROPOUT_OUT);
     
     //create the evaluator
     let eval = CIFAR10Evaluator::new("cifar-10-binary/data_batch_1.bin", model.clone());
@@ -191,8 +192,8 @@ impl CIFAR10Evaluator
         println!("Accuracy: {:6.3}%", acc);
         
         //reenable dropout after testing
-        self.model.set_input_dropout(DROPOUT)
-            .set_extract_dropout(DROPOUT);
+        self.model.set_input_dropout(DROPOUT_IN)
+            .set_extract_dropout(DROPOUT_OUT);
     }
 }
 
