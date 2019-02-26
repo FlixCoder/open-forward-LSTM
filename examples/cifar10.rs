@@ -103,6 +103,7 @@ fn load_cifar10(filename:&str) -> std::io::Result<(Vec<Vec<Float>>, Vec<Vec<Floa
         file.read_exact(&mut buffer)?;
         y.push(to_categorical(10, buffer[0]));
         let data:Vec<Float> = buffer[1..].iter().map(|val| *val as Float / 128.0 - 1.0).collect();
+        //let data:Vec<Float> = buffer[1..].iter().map(|val| *val as Float / 255.0).collect();
         x.push(data);
     }
     
