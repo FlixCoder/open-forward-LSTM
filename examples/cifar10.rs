@@ -12,12 +12,12 @@ use std::io::prelude::*;
 use std::fs::File;
 use std::time::Instant;
 
-const BATCHSIZE:usize = 64; //number of items to form a batch inside evaluation
+const BATCHSIZE:usize = 32; //number of items to form a batch inside evaluation
 const STEPS:usize = 1; //number of LSTM runs/steps to decide the class
 
 const LR:Float = 0.0025; //learning rate for the optimizer
 const LAMBDA:Float = 0.001; //weight decay factor
-const DROPOUT:Float = 0.5; //dropout factor (percentage to be dropped)
+const DROPOUT:Float = 0.4; //dropout factor (percentage to be dropped)
 const NOISE_STD:Float = 0.025; //standard deviation of noise to mutate parameters and generate meta population
 const POPULATION:usize = 250; //number of double-sided samples forming the meta population
 
