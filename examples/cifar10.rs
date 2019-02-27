@@ -50,8 +50,16 @@ fn main()
     //create the evaluator
     let eval = CIFAR10Evaluator::new("cifar-10-binary/data_batch_1.bin", model.clone());
     
-    //create optimizer
-    let mut opt = Adam::new();
+    //create or load optimizer
+    let loaded = Adam::load("optimizer.json");
+    let mut opt = if loaded.is_ok()
+        {
+            loaded.unwrap()
+        }
+        else
+        {
+            Adam::new()
+        };
     opt.set_lr(LR)
         .set_lambda(LAMBDA)
         .set_adabound(ADABOUND)
@@ -81,6 +89,7 @@ fn main()
         model.set_params(opt.get_params());
         model.reset();
         model.save("cifar10.lstm").ok();
+        opt.get_opt().save("optimizer.json").ok();
         
         //display progress
         println!("After {} iteratios:", (i+1) * n);
@@ -97,6 +106,7 @@ fn main()
     model.set_params(opt.get_params());
     model.reset();
     model.save("cifar10.lstm").ok();
+    opt.get_opt().save("optimizer.json").ok();
     
     println!("Final results on test data:");
     tester.set_model(model.clone());
@@ -104,6 +114,7 @@ fn main()
     
     //clean up
     //std::fs::remove_file("cifar10.lstm").ok();
+    //std::fs::remove_file("optimizer.json").ok();
 }
 
 
