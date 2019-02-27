@@ -16,11 +16,19 @@ const BATCHSIZE:usize = 32; //number of items to form a batch inside evaluation
 const STEPS:usize = 1; //number of LSTM runs/steps to decide the class
 
 const LR:Float = 0.001; //learning rate for the optimizer
-const LAMBDA:Float = 0.0; //weight decay factor
-const DROPOUT_IN:Float = 0.1; //dropout for input layers factor (percentage to be dropped)
-const DROPOUT_OUT:Float = 0.25; //dropout factor (percentage to be dropped)
+const LAMBDA:Float = 0.001; //weight decay factor
+const ADABOUND:bool = true; //use AdaBound variant?
+const FINAL_LR:Float = 0.1; //final AdaBound learning rate (SGD)
+
+const DROPOUT_IN:Float = 0.0; //dropout for input layers factor (percentage to be dropped)
+const DROPOUT_OUT:Float = 0.0; //dropout factor (percentage to be dropped)
+
 const NOISE_STD:Float = 0.02; //standard deviation of noise to mutate parameters and generate meta population
 const POPULATION:usize = 250; //number of double-sided samples forming the meta population
+
+//TODO:
+//try adamax?
+//try dopout further, without weight decay?
 
 
 fn main()
@@ -42,8 +50,15 @@ fn main()
     //create the evaluator
     let eval = CIFAR10Evaluator::new("cifar-10-binary/data_batch_1.bin", model.clone());
     
+    //create optimizer
+    let mut opt = Adam::new();
+    opt.set_lr(LR)
+        .set_lambda(LAMBDA)
+        .set_adabound(ADABOUND)
+        .set_final_lr(FINAL_LR);
+    
     //evolutionary optimizer (for more details about it, see the git repository of it)
-    let mut opt = ES::new_with_adam(eval, LR, LAMBDA); //learning rate, weight decay
+    let mut opt = ES::new(opt, eval);
     opt.set_params(model.get_params())
         .set_std(NOISE_STD)
         .set_samples(POPULATION);

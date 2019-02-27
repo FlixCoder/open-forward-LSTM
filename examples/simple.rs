@@ -13,7 +13,7 @@ use rand::prelude::*;
 fn main()
 {
     //NN model
-    let loaded = LSTM::load("test.nn");
+    let loaded = LSTM::load("test.nn"); //better store and restore optimizer as well
     let mut model = if loaded.is_ok()
         { //try loaded model first
             loaded.unwrap()
@@ -28,6 +28,7 @@ fn main()
     
     //evolutionary optimizer (for more details about it, see the git repository of it)
     let mut opt = ES::new_with_adam(eval, 0.1, 0.0); //learning rate, weight decay
+    opt.get_opt_mut().set_adabound(true).set_gamma(0.01);
     opt.set_params(model.get_params())
         .set_std(0.02)
         .set_samples(50);
