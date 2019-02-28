@@ -15,20 +15,23 @@ use std::time::Instant;
 const BATCHSIZE:usize = 32; //number of items to form a batch inside evaluation
 const STEPS:usize = 1; //number of LSTM runs/steps to decide the class
 
-const LR:Float = 0.001; //learning rate for the optimizer
+const LR:Float = 0.002; //learning rate for the optimizer
 const LAMBDA:Float = 0.001; //weight decay factor
 const ADABOUND:bool = true; //use AdaBound variant?
 const FINAL_LR:Float = 0.1; //final AdaBound learning rate (SGD)
+const GAMMA:Float = 0.001; //gamma value for AdaBound
 
-const DROPOUT_IN:Float = 0.0; //dropout for input layers factor (percentage to be dropped)
-const DROPOUT_OUT:Float = 0.0; //dropout factor (percentage to be dropped)
+const DROPOUT_IN:Float = 0.1; //dropout for input layers factor (percentage to be dropped)
+const DROPOUT_OUT:Float = 0.1; //dropout factor (percentage to be dropped)
 
 const NOISE_STD:Float = 0.02; //standard deviation of noise to mutate parameters and generate meta population
 const POPULATION:usize = 250; //number of double-sided samples forming the meta population
 
 //TODO:
-//try adamax?
+//try adamax/SGD?
+//try normal opt.optimize_par or _std_par?
 //try dopout further, without weight decay?
+//try L0.5 regularization
 
 
 fn main()
@@ -63,6 +66,7 @@ fn main()
     opt.set_lr(LR)
         .set_lambda(LAMBDA)
         .set_adabound(ADABOUND)
+        .set_gamma(GAMMA)
         .set_final_lr(FINAL_LR);
     
     //evolutionary optimizer (for more details about it, see the git repository of it)
@@ -83,7 +87,7 @@ fn main()
     { //10 times
         //optimize for n steps
         let n = 10;
-        let res = opt.optimize_std_par(n); //use ranked or not?
+        let res = opt.optimize_par(n); //use ranked or not?
         
         //save results
         model.set_params(opt.get_params());
