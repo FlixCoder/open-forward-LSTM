@@ -30,7 +30,7 @@ const POPULATION:usize = 250; //number of double-sided samples forming the meta 
 //TODO:
 //try adamax/SGD?
 //try normal opt.optimize_par or _std_par?
-//try dopout further, without weight decay?
+//try dropout further, without weight decay?
 //try L0.5 regularization
 
 
