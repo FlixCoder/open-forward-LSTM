@@ -10,6 +10,7 @@ use ofnn::losses;
 use rand::prelude::*;
 use std::io::prelude::*;
 use std::fs::File;
+use std::path::Path;
 use std::time::Instant;
 
 const BATCHSIZE:usize = 32; //number of items to form a batch inside evaluation
@@ -29,7 +30,7 @@ const POPULATION:usize = 250; //number of double-sided samples forming the meta 
 
 //TODO:
 //try adamax/SGD?
-//try normal opt.optimize_par or _std_par?
+//try normal opt.optimize_.. function?
 //try dropout further, without weight decay?
 //try L0.5 regularization
 
@@ -51,7 +52,7 @@ fn main()
         .set_extract_dropout(DROPOUT_OUT);
     
     //create the evaluator
-    let eval = CIFAR10Evaluator::new("cifar-10-binary/data_batch_1.bin", model.clone());
+    let eval = CIFAR10Evaluator::new(model.clone(), "cifar-10-binary/", true); //training data
     
     //create or load optimizer
     let loaded = Adam::load("optimizer.json");
@@ -77,7 +78,7 @@ fn main()
     
     //show initial scores
     println!("Initial results on test set:");
-    let mut tester = CIFAR10Evaluator::new("cifar-10-binary/test_batch.bin", model.clone());
+    let mut tester = CIFAR10Evaluator::new(model.clone(), "cifar-10-binary/", false); //test data
     tester.print_metrics();
     
     //training: track the optimizer's results
@@ -122,7 +123,14 @@ fn main()
 }
 
 
-fn load_cifar10(filename:&str) -> std::io::Result<(Vec<Vec<Float>>, Vec<Vec<Float>>)>
+/// Function to pass to map() for pixel normalization
+fn image_normalize(x:&u8) -> Float
+{
+    (*x as Float / 255.0 - 0.5) * 2.0 * 1.6 //map [0, 255] to [-1.6, 1.6]
+}
+
+/// Loads a CIFAR10 file and returns normalized, categorized data in a Result<(X, Y)>
+fn load_cifar10(filename:&Path) -> std::io::Result<(Vec<Vec<Float>>, Vec<Vec<Float>>)>
 {
     let mut file = File::open(filename)?;
     let mut x = Vec::new();
@@ -133,14 +141,14 @@ fn load_cifar10(filename:&str) -> std::io::Result<(Vec<Vec<Float>>, Vec<Vec<Floa
     {
         file.read_exact(&mut buffer)?;
         y.push(to_categorical(10, buffer[0]));
-        let data:Vec<Float> = buffer[1..].iter().map(|val| *val as Float / 128.0 - 1.0).collect();
-        //let data:Vec<Float> = buffer[1..].iter().map(|val| *val as Float / 255.0).collect();
+        let data:Vec<Float> = buffer[1..].iter().map(image_normalize).collect();
         x.push(data);
     }
     
     Ok((x, y))
 }
 
+/// Translates integer labels into categorical label arrays.
 fn to_categorical(classes:u8, label:u8) -> Vec<Float>
 {
     let mut vec = vec![0.0; classes as usize];
@@ -148,6 +156,7 @@ fn to_categorical(classes:u8, label:u8) -> Vec<Float>
     vec
 }
 
+/// Return argmax of vector
 fn argmax(vec:&[Float]) -> usize
 {
     let mut argmax = 0;
@@ -174,10 +183,31 @@ struct CIFAR10Evaluator
 
 impl CIFAR10Evaluator
 {
-    pub fn new(filename:&str, model:LSTM) -> CIFAR10Evaluator
+    pub fn new(model:LSTM, folder:&str, train:bool) -> CIFAR10Evaluator
     {
-        let data = load_cifar10(filename).unwrap();
-        let seed = thread_rng().next_u64() % (std::u64::MAX - 10000); //prevent overflow when adding the index
+        let path = Path::new(folder);
+        let mut data;
+        if train
+        {
+            data = load_cifar10(&path.join("data_batch_1.bin")).unwrap();
+            let mut tmp = load_cifar10(&path.join("data_batch_2.bin")).unwrap();
+            data.0.append(&mut tmp.0);
+            data.1.append(&mut tmp.1);
+            let mut tmp = load_cifar10(&path.join("data_batch_3.bin")).unwrap();
+            data.0.append(&mut tmp.0);
+            data.1.append(&mut tmp.1);
+            let mut tmp = load_cifar10(&path.join("data_batch_4.bin")).unwrap();
+            data.0.append(&mut tmp.0);
+            data.1.append(&mut tmp.1);
+            let mut tmp = load_cifar10(&path.join("data_batch_5.bin")).unwrap();
+            data.0.append(&mut tmp.0);
+            data.1.append(&mut tmp.1);
+        }
+        else
+        {
+            data = load_cifar10(&path.join("test_batch.bin")).unwrap();
+        }
+        let seed = thread_rng().next_u64() % (std::u64::MAX - 50000); //prevent overflow when adding the index/iterarions
         CIFAR10Evaluator { model: model, data: data, seed: seed }
     }
     
@@ -256,6 +286,6 @@ impl Evaluator for CIFAR10Evaluator
     
     fn eval_test(&self, params:&[Float]) -> Float
     {
-        self.eval_train(params, 9999) //use index greater than can be used during training to possibly yield seperate test data (constant)
+        self.eval_train(params, 49999) //use index greater than can be used during training to possibly yield seperate test data (constant)
     }
 }

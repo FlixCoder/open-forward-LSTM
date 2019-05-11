@@ -83,7 +83,7 @@ impl LSTMEvaluator
 {
     pub fn new(model:LSTM) -> LSTMEvaluator
     {
-        let seed = thread_rng().next_u64() % (std::u64::MAX - 1000); //prevent overflow when adding the index
+        let seed = thread_rng().next_u64() % (std::u64::MAX - 1000); //prevent overflow when adding the index/iterations
         LSTMEvaluator { model: model, seed: seed }
     }
 }
